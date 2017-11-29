@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import BinarySensorDevice, \
 from homematicip.async.device import AsyncShutterContact
 
 # from custom_components.homematic_ip import HmipGenericDevice
+from ..homematic_ip import DOMAIN, ATTR_HMIP_HOME_ID
 from ..homematic_ip import HmipGenericDevice
 
 # from homeassistant.components.homematic_ip import HmipGenericDevice
@@ -30,7 +31,8 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     if OPEN not in DEVICE_CLASSES:
         return False
     _devices = []
-    home = discovery_info['home']
+    home = hass.data[DOMAIN][discovery_info[ATTR_HMIP_HOME_ID]]
+    #home = discovery_info['home']
     for device in home.devices:
         if isinstance(device, AsyncShutterContact):
             _devices.append(

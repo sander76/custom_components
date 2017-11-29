@@ -12,6 +12,7 @@ from homematicip.async.device import AsyncPlugableSwitchMeasuring, \
 
 # from homeassistant.components.homematic_ip import HmipGenericDevice
 # from custom_components.homematic_ip import HmipGenericDevice
+from ..homematic_ip import DOMAIN, ATTR_HMIP_HOME_ID
 from ..homematic_ip import HmipGenericDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     """Set up the device."""
     _LOGGER.info("Setting up HomeMaticIP switch")
     _devices = []
-    home = discovery_info['home']
+    home = hass.data[DOMAIN][discovery_info[ATTR_HMIP_HOME_ID]]
     for _device in home.devices:
         if isinstance(_device, AsyncPlugableSwitchMeasuring):
             _devices.append(

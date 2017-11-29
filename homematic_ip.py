@@ -30,6 +30,7 @@ ATTR_HMIP_ID = 'device_id'
 ATTR_HMIP_HOME_ID = 'home_id'
 ATTR_HMIP_HOME = 'home'
 ATTR_HMIP_LAST_UPDATE = 'last_update'
+
 # ATTR_HMIP_FIRMWARE = 'status_firmware'
 # ATTR_HMIP_ACTUAL_FIRMWARE = 'actual_firmware'
 # ATTR_HMIP_AVAILABLE_FIRMWARE = 'available_firmware'
@@ -118,8 +119,9 @@ async def stop_hmip(hmip):
 @asyncio.coroutine
 def async_setup(hass, config):
     """Setup the hmip platform."""
-    _LOGGER.debug("Setting up hmip platform")
     from homematicip.base.base_connection import HmipConnectionError
+
+    _LOGGER.debug("Setting up hmip platform")
     @callback
     def stop_callback(_event):
         """Stop listening for incoming websocket data."""
@@ -141,11 +143,11 @@ def async_setup(hass, config):
             _LOGGER.error('Failed to connect to the HomeMatic cloud server.')
             return False
         else:
-            # hass.data[DOMAIN][_hmip.id] = _hmip
+            hass.data[DOMAIN][_hmip.id] = _hmip
 
             for component in COMPONTENTS:
                 hass.async_add_job(async_load_platform(
-                    hass, component, DOMAIN, {ATTR_HMIP_HOME: _hmip},
+                    hass, component, DOMAIN, {ATTR_HMIP_HOME_ID: _hmip.id},
                     config))
 
     return True
@@ -157,12 +159,12 @@ class HmipGenericDevice(Entity):
     def __init__(self, hass, home, device):
         """Initialize the generic device."""
         self.hass = hass
-        self._home = home
+        #self._home = home
         self._device = device
 
         self._device_state_attributes = {
             ATTR_HMIP_ID: self._device.id,
-            ATTR_HMIP_HOME_ID: self._home.id
+            ATTR_HMIP_HOME_ID: home.id
         }
         self._device.on_update(self.push_update)
 
