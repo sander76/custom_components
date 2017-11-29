@@ -141,7 +141,7 @@ def async_setup(hass, config):
             _LOGGER.error('Failed to connect to the HomeMatic cloud server.')
             return False
         else:
-            hass.data[DOMAIN][_hmip.id] = _hmip
+            # hass.data[DOMAIN][_hmip.id] = _hmip
 
             for component in COMPONTENTS:
                 hass.async_add_job(async_load_platform(
