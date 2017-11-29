@@ -5,12 +5,15 @@ sensor: Multiple sensors.
 import asyncio
 import logging
 
-from homematicip.async.device import AsyncTemperatureHumiditySensorWithoutDisplay, \
+from homeassistant.const import TEMP_CELSIUS
+from homematicip.async.device import \
+    AsyncTemperatureHumiditySensorWithoutDisplay, \
     AsyncTemperatureHumiditySensorDisplay
 
-from homeassistant.const import TEMP_CELSIUS
+from ..homematic_ip import HmipGenericDevice
+
 # from homeassistant.components.homematic_ip import HmipGenericDevice
-from custom_components.homematic_ip import HmipGenericDevice
+# from custom_components.homematic_ip import HmipGenericDevice
 
 _LOGGER = logging.getLogger(__name__)
 

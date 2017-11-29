@@ -6,14 +6,13 @@ binary_sensor: Switch
 import asyncio
 import logging
 
+from homeassistant.components.switch import SwitchDevice
 from homematicip.async.device import AsyncPlugableSwitchMeasuring, \
     AsyncPlugableSwitch
 
-from homeassistant.components.switch import SwitchDevice
-from custom_components.homematic_ip import HmipGenericDevice
-
 # from homeassistant.components.homematic_ip import HmipGenericDevice
-from custom_components.homematic_ip import HmipGenericDevice
+# from custom_components.homematic_ip import HmipGenericDevice
+from ..homematic_ip import HmipGenericDevice
 
 _LOGGER = logging.getLogger(__name__)
 

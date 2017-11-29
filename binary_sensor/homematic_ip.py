@@ -7,10 +7,11 @@ import logging
 
 from homeassistant.components.binary_sensor import BinarySensorDevice, \
     DEVICE_CLASSES
-
 from homematicip.async.device import AsyncShutterContact
 
-from custom_components.homematic_ip import HmipGenericDevice
+# from custom_components.homematic_ip import HmipGenericDevice
+from ..homematic_ip import HmipGenericDevice
+
 # from homeassistant.components.homematic_ip import HmipGenericDevice
 
 _LOGGER = logging.getLogger(__name__)
