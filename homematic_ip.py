@@ -64,7 +64,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 
 @asyncio.coroutine
-def setup_home(config, loop, websession):
+def setup_home(config, loop, websession,hass):
     from homematicip.base.base_connection import HmipConnectionError
     """Create a hmip home instance.
 
@@ -86,25 +86,23 @@ def setup_home(config, loop, websession):
 
     def connect_to_websocket():
         home.enable_events()
-        home.on_connection_lost(reconnect)
+        home.on_connection_lost(connection_lost)
 
-    # todo: add a callback when the task finishes (crashes) this will
-    # catch any exception thrown by the websocket connection.
-    # https://medium.com/@yeraydiazdiaz/asyncio-coroutine-patterns-errors-and-cancellation-3bb422e961ff
-    # home.enable_events()
+    @asyncio.coroutine
+    def reconnect():
+        yield from asyncio.sleep(20)
+        connect_to_websocket()
 
-    def reconnect(future_: asyncio.Future):
+    def connection_lost(future_: asyncio.Future):
         """Schedule a reconnect when websocket connection has gone"""
         try:
             _result = future_.result()
         except HmipConnectionError as err:
             _LOGGER.warning(err)
-            asyncio.sleep(2)
-            connect_to_websocket()
+            hass.async_add_job(reconnect)
         except Exception as err:
             _LOGGER.exception(err)
-            asyncio.sleep(2)
-            connect_to_websocket()
+            hass.async_add_job(reconnect)
 
     connect_to_websocket()
 
