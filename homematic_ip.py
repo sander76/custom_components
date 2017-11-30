@@ -31,17 +31,8 @@ ATTR_HMIP_HOME_ID = 'home_id'
 ATTR_HMIP_HOME = 'home'
 ATTR_HMIP_LAST_UPDATE = 'last_update'
 
-# ATTR_HMIP_FIRMWARE = 'status_firmware'
-# ATTR_HMIP_ACTUAL_FIRMWARE = 'actual_firmware'
-# ATTR_HMIP_AVAILABLE_FIRMWARE = 'available_firmware'
 ATTR_HMIP_LOW_BATTERY = 'low_battery'
 ATTR_HMIP_UNREACHABLE = 'not_reachable'
-# ATTR_HMIP_SABOTAGE = 'sabotage'
-# ATTR_HMIP_UPTODATE = 'up_to_date'
-# ATTR_HMIP_WINDOW = 'window'
-# ATTR_HMIP_ON = 'on'
-# ATTR_HMID_CURRENT_POWER_CONSUMPTION = 'currentPowerConsumption'
-# ATTR_HMID_ENERGY_COUNTER = 'energyCounter'
 
 COMPONTENTS = [
     'sensor',
@@ -64,7 +55,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 
 @asyncio.coroutine
-def setup_home(config, loop, websession,hass):
+def setup_home(config, loop, websession, hass):
     from homematicip.base.base_connection import HmipConnectionError
     """Create a hmip home instance.
 
@@ -120,6 +111,7 @@ def async_setup(hass, config):
     from homematicip.base.base_connection import HmipConnectionError
 
     _LOGGER.debug("Setting up hmip platform")
+
     @callback
     def stop_callback(_event):
         """Stop listening for incoming websocket data."""
@@ -136,7 +128,8 @@ def async_setup(hass, config):
         hass.data[DOMAIN] = {}
         try:
             websession = async_get_clientsession(hass)
-            _hmip = yield from setup_home(_hub_config, hass.loop, websession)
+            _hmip = yield from setup_home(
+                _hub_config, hass.loop, websession,hass)
         except HmipConnectionError as err:
             _LOGGER.error('Failed to connect to the HomeMatic cloud server.')
             return False
@@ -157,7 +150,7 @@ class HmipGenericDevice(Entity):
     def __init__(self, hass, home, device):
         """Initialize the generic device."""
         self.hass = hass
-        #self._home = home
+        # self._home = home
         self._device = device
 
         self._device_state_attributes = {
