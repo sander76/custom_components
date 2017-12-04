@@ -162,7 +162,7 @@ class HmipGenericDevice(Entity):
             ATTR_HMIP_HOME_ID: home.id
         }
         self._device.on_update(self.push_update)
-        self._entity_id = "{}_{}".format(self._device.id, self.__class__)
+        self._entity_id = "{}.{}_{}".format(DOMAIN, self.__class__.__name__, self._device.id)
 
     def push_update(self, js):
         """Update the hmip device."""
