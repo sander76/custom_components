@@ -29,7 +29,7 @@ CONF_AUTHTOKEN = 'authtoken'
 ATTR_HMIP_ID = 'device_id'
 ATTR_HMIP_HOME_ID = 'home_id'
 ATTR_HMIP_HOME = 'home'
-ATTR_HMIP_LABEL = ''
+ATTR_HMIP_LABEL = 'label'
 ATTR_HMIP_LAST_UPDATE = 'last_update'
 
 ATTR_HMIP_LOW_BATTERY = 'low_battery'
