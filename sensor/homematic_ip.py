@@ -30,14 +30,14 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     _LOGGER.info("Setting up HomeMaticIP sensor")
 
     _devices = []
-    #home = discovery_info['home']
+    # home = discovery_info['home']
     home = hass.data[DOMAIN][discovery_info[ATTR_HMIP_HOME_ID]]
     for device in home.devices:
 
         if isinstance(device, TEMPERATURE_SENSORS):
             _devices.append(
                 HmipTemperatureSensor(hass, home, device))
-        if isinstance(device,HUMIDITY_SENSORS):
+        if isinstance(device, HUMIDITY_SENSORS):
             _devices.append(
                 HmipHumiditySensor(hass, home, device))
     if _devices:

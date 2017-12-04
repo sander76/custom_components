@@ -29,10 +29,13 @@ CONF_AUTHTOKEN = 'authtoken'
 ATTR_HMIP_ID = 'device_id'
 ATTR_HMIP_HOME_ID = 'home_id'
 ATTR_HMIP_HOME = 'home'
+ATTR_HMIP_LABEL = ''
 ATTR_HMIP_LAST_UPDATE = 'last_update'
 
 ATTR_HMIP_LOW_BATTERY = 'low_battery'
 ATTR_HMIP_UNREACHABLE = 'not_reachable'
+
+RECONNECT_RETRY_DELAY = 20
 
 COMPONTENTS = [
     'sensor',
@@ -56,12 +59,13 @@ CONFIG_SCHEMA = vol.Schema({
 
 @asyncio.coroutine
 def setup_home(config, loop, websession, hass):
-    from homematicip.base.base_connection import HmipConnectionError
     """Create a hmip home instance.
 
-    During creation several requests are made to the hmip server.
-    If a problem occurs a 'ConnectionError' is thrown.
-    """
+        During creation several requests are made to the hmip server.
+        If a problem occurs a 'ConnectionError' is thrown.
+        """
+    from homematicip.base.base_connection import HmipConnectionError
+
     _LOGGER.info("Setting up hmip home")
     from homematicip.async.home import AsyncHome
 
@@ -81,7 +85,7 @@ def setup_home(config, loop, websession, hass):
 
     @asyncio.coroutine
     def reconnect():
-        yield from asyncio.sleep(20)
+        yield from asyncio.sleep(RECONNECT_RETRY_DELAY)
         connect_to_websocket()
 
     def connection_lost(future_: asyncio.Future):
@@ -129,7 +133,7 @@ def async_setup(hass, config):
         try:
             websession = async_get_clientsession(hass)
             _hmip = yield from setup_home(
-                _hub_config, hass.loop, websession,hass)
+                _hub_config, hass.loop, websession, hass)
         except HmipConnectionError as err:
             _LOGGER.error('Failed to connect to the HomeMatic cloud server.')
             return False
@@ -154,14 +158,19 @@ class HmipGenericDevice(Entity):
         self._device = device
 
         self._device_state_attributes = {
-            ATTR_HMIP_ID: self._device.id,
+            ATTR_HMIP_LABEL: self._device.label,
             ATTR_HMIP_HOME_ID: home.id
         }
         self._device.on_update(self.push_update)
+        self._entity_id = "{}_{}".format(self._device.id, self.__class__)
 
     def push_update(self, js):
         """Update the hmip device."""
         self.async_schedule_update_ha_state()
+
+    @property
+    def entity_id(self):
+        return self._entity_id
 
     @property
     def name(self):
