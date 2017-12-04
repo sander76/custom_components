@@ -30,7 +30,6 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     _LOGGER.info("Setting up HomeMaticIP sensor")
 
     _devices = []
-    # home = discovery_info['home']
     home = hass.data[DOMAIN][discovery_info[ATTR_HMIP_HOME_ID]]
     for device in home.devices:
 
@@ -52,7 +51,6 @@ class HmipTemperatureSensor(HmipGenericDevice):
         """Initialize the device."""
         super().__init__(hass, home, device)
         self._unit_of_measurement = unit_of_measurement
-        self.friendly_name = 'Temperature'
 
     @property
     def unit_of_measurement(self):
@@ -72,12 +70,11 @@ class HmipHumiditySensor(HmipGenericDevice):
         """Initialize the device."""
         super().__init__(hass, home, device)
         self._unit_of_measurement = unit_of_measurement
-        self.friendly_name = 'Humidity'
 
     @property
     def icon(self):
         """Icon to use in the frontend."""
-        return 'mdi:water'
+        return 'mdi:water-percent'
 
     @property
     def unit_of_measurement(self):
