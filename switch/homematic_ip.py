@@ -6,7 +6,7 @@ binary_sensor: Switch
 import asyncio
 import logging
 
-from homeassistant.components.switch import SwitchDevice
+from homeassistant.components.switch import SwitchDevice, ENTITY_ID_FORMAT
 from homematicip.async.device import AsyncPlugableSwitchMeasuring, \
     AsyncPlugableSwitch
 
@@ -27,11 +27,11 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     for _device in home.devices:
         if isinstance(_device, AsyncPlugableSwitchMeasuring):
             _devices.append(
-                HmipPlugableSwitchMeasuring(hass, home, _device)
+                HmipPlugableSwitchMeasuring(hass, home, _device, ENTITY_ID_FORMAT)
             )
         elif isinstance(_device, AsyncPlugableSwitch):
             _devices.append(
-                HmipPlugableSwitch(hass, home, _device))
+                HmipPlugableSwitch(hass, home, _device, ENTITY_ID_FORMAT))
 
     if _devices:
         async_add_devices(_devices)

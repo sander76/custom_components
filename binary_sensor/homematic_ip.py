@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from homeassistant.components.binary_sensor import BinarySensorDevice, \
-    DEVICE_CLASSES
+    DEVICE_CLASSES, ENTITY_ID_FORMAT
 from homematicip.async.device import AsyncShutterContact
 
 # from custom_components.homematic_ip import HmipGenericDevice
@@ -16,6 +16,7 @@ from ..homematic_ip import HmipGenericDevice
 # from homeassistant.components.homematic_ip import HmipGenericDevice
 
 _LOGGER = logging.getLogger(__name__)
+
 
 # ATTR_EVENT_DELAY = 'event_delay'
 # ATTR_STATE_LOW_BAT = 'low_battery'
@@ -32,7 +33,7 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
         return False
     _devices = []
     home = hass.data[DOMAIN][discovery_info[ATTR_HMIP_HOME_ID]]
-    #home = discovery_info['home']
+    # home = discovery_info['home']
     for device in home.devices:
         if isinstance(device, AsyncShutterContact):
             _devices.append(
@@ -48,7 +49,7 @@ class HmipShutterContact(HmipGenericDevice,
 
     def __init__(self, hass, home, device, device_class):
         """Initialize the device."""
-        super().__init__(hass, home, device)
+        super().__init__(hass, home, device, ENTITY_ID_FORMAT)
         self._device_class = device_class
 
     @property

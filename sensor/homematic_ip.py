@@ -5,6 +5,8 @@ sensor: Multiple sensors.
 import asyncio
 import logging
 
+from homeassistant.components.sensor import ENTITY_ID_FORMAT
+
 from homeassistant.const import TEMP_CELSIUS
 from homematicip.async.device import \
     AsyncTemperatureHumiditySensorWithoutDisplay, \
@@ -44,12 +46,14 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     return True
 
 
+
+
 class HmipTemperatureSensor(HmipGenericDevice):
     """HomematicIP temperature sensor."""
 
     def __init__(self, hass, home, device, unit_of_measurement=TEMP_CELSIUS):
         """Initialize the device."""
-        super().__init__(hass, home, device)
+        super().__init__(hass, home, device,ENTITY_ID_FORMAT)
         self._unit_of_measurement = unit_of_measurement
 
     @property
@@ -68,13 +72,13 @@ class HmipHumiditySensor(HmipGenericDevice):
 
     def __init__(self, hass, home, device, unit_of_measurement='%'):
         """Initialize the device."""
-        super().__init__(hass, home, device)
+        super().__init__(hass, home, device,ENTITY_ID_FORMAT)
         self._unit_of_measurement = unit_of_measurement
 
     @property
     def icon(self):
         """Icon to use in the frontend."""
-        return 'mdi:water-percent'
+        return 'mdi:water'
 
     @property
     def unit_of_measurement(self):

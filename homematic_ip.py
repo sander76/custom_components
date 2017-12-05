@@ -13,7 +13,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback, CoreState
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.discovery import async_load_platform
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, async_generate_entity_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ COMPONTENTS = [
 ]
 
 SIGNAL_UPDATE = 'homematicip.update'
+
+# todo: if provided use CONF_NAME as the access point id.
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.All(cv.ensure_list, [vol.Schema({
@@ -151,7 +153,7 @@ def async_setup(hass, config):
 class HmipGenericDevice(Entity):
     """Representation of an HomeMaticIP device."""
 
-    def __init__(self, hass, home, device):
+    def __init__(self, hass, home, device, entity_id_format):
         """Initialize the generic device."""
         self.hass = hass
         # self._home = home
@@ -162,15 +164,19 @@ class HmipGenericDevice(Entity):
             ATTR_HMIP_HOME_ID: home.id
         }
         self._device.on_update(self.push_update)
-        self._entity_id = "{}.{}_{}".format(DOMAIN, self.__class__.__name__, self._device.id)
+        self.entity_id = async_generate_entity_id(
+            entity_id_format, self._unique_id(), hass=hass)
 
-    def push_update(self, js):
+    def push_update(self, js, **kwargs):
         """Update the hmip device."""
         self.async_schedule_update_ha_state()
 
-    @property
-    def entity_id(self):
-        return self._entity_id
+    def _unique_id(self):
+        return '{}_{}'.format(self.__class__.__name__, self._device.id)
+
+    # @property
+    # def entity_id(self):
+    #     return self._entity_id
 
     @property
     def name(self):
