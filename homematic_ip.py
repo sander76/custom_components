@@ -102,11 +102,14 @@ class HmipConnector:
             _LOGGER.debug("Retrying websocket connection.")
         try:
             # connect to the websocket server.
+
             ws_loop_future = yield from self._home.enable_events()
+            _LOGGER.info("HMIP events enabled.")
         except HmipConnectionError as err:
+            _LOGGER.error(err)
             if self.ws_reconnect_handle is None:
-                _LOGGER.error("Error opening websocket connection: %s", err)
-                # Do a connection retry in x minutes. Executing this handle
+
+                # Do a connection retry every x minutes. Executing this handle
                 # will cancel the task.
                 _LOGGER.info(
                     "reconnecting in %s minutes", RECONNECT_RETRY_DELAY)
@@ -115,10 +118,13 @@ class HmipConnector:
                         minutes=RECONNECT_RETRY_DELAY)
                 )
             return
+        except Exception as err:
+            _LOGGER.error("undefined error: %s", err)
+            return
 
         # Connection succeeded. Remove any remaining reconnect handlers
         if self.ws_reconnect_handle is not None:
-            self.ws_reconnect_handle() # removes the handle task.
+            self.ws_reconnect_handle()  # removes the handle task.
             self.ws_reconnect_handle = None
 
         _LOGGER.info("HMIP websocket connected.")
@@ -157,75 +163,12 @@ class HmipConnector:
         _LOGGER.info("Closed HMIP connection")
 
 
-# @asyncio.coroutine
-# def setup_home(config, loop, websession, hass):
-#     """Create a hmip home instance.
-#
-#         During creation several requests are made to the hmip server.
-#         If a problem occurs a 'ConnectionError' is thrown.
-#         """
-#     from homematicip.base.base_connection import HmipConnectionError
-#
-#     _LOGGER.info("Setting up hmip home")
-#     from homematicip.async.home import AsyncHome
-#
-#     _accesspoint = config.get(CONF_ACCESSPOINT)
-#     _authtoken = config.get(CONF_AUTHTOKEN)
-#
-#     home = AsyncHome(loop, websession)
-#     home.set_auth_token(_authtoken)
-#
-#     yield from home.init(_accesspoint)
-#
-#     yield from home.get_current_state()
-#
-#     # def connect_to_websocket():
-#     #     home.enable_events()
-#     #     home.on_connection_lost(connection_lost)
-#
-#     @asyncio.coroutine
-#     def reconnect():
-#         yield from asyncio.sleep(RECONNECT_RETRY_DELAY)
-#         connect_to_websocket()
-#
-#     # def connection_lost(future_: asyncio.Future):
-#     #     """Schedule a reconnect when websocket connection has gone"""
-#     #     try:
-#     #         _result = future_.result()
-#     #     except HmipConnectionError as err:
-#     #         _LOGGER.warning(err)
-#     #         hass.async_add_job(reconnect)
-#     #     except Exception as err:
-#     #         _LOGGER.exception(err)
-#     #         hass.async_add_job(reconnect)
-#
-#     connect_to_websocket()
-#
-#     return home
-
-# async def stop_hmip(hmip):
-#     """Stop the hmip websocket connection."""
-#     hmip.disable_events()
-
-
 @asyncio.coroutine
 def async_setup(hass, config):
     """Setup the hmip platform."""
     from homematicip.base.base_connection import HmipConnectionError
 
     _LOGGER.debug("Setting up hmip platform")
-
-    # @callback
-    # def stop_callback(_event):
-    #     # todo: rewrite this.
-    #     """Stop listening for incoming websocket data."""
-    #     for _hmip in hass.data[DOMAIN].values():
-    #         hass.async_add_job(stop_hmip(_hmip))
-    #
-    # hass.bus.async_listen_once(
-    #     EVENT_HOMEASSISTANT_STOP,
-    #     stop_callback
-    # )
 
     homematicip_hubs = config.get(DOMAIN, [])
     hass.data[DOMAIN] = {}
