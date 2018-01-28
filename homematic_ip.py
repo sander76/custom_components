@@ -108,7 +108,6 @@ class HmipConnector:
         except HmipConnectionError as err:
             _LOGGER.error(err)
             if self.ws_reconnect_handle is None:
-
                 # Do a connection retry every x minutes. Executing this handle
                 # will cancel the task.
                 _LOGGER.info(
@@ -129,6 +128,11 @@ class HmipConnector:
 
         _LOGGER.info("HMIP websocket connected.")
 
+        # Reconnection procedure might have taken a long(er) time.
+        # Meanwhile a device state might have changed, which is now missed.
+        # Doing an explicit update state call.
+        yield from self._home.get_current_state()
+
         try:
             yield from ws_loop_future
         except HmipConnectionError as err:
@@ -138,12 +142,6 @@ class HmipConnector:
 
         # If websocket close was not requested, attempt to reconnect.
         if not self._ws_close_requested:
-            # todo: Add Update_state call.
-            # This establishes a new websocket
-            # connection waiting for state changes. But in the meantime
-            # state might have changed which is not propagated through the
-            # websocket connection. A Update_state call should be added to
-            # the reconnect method.
             _LOGGER.info("Websocket connection closed unintentionally. "
                          "Trying to reconnect.")
             self._hass.loop.create_task(self.ws_connect())
