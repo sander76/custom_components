@@ -105,7 +105,7 @@ class HmipConnector:
 
             ws_loop_future = yield from self._home.enable_events()
             _LOGGER.info("HMIP events enabled.")
-        except HmipConnectionError as err:
+        except (HmipConnectionError, OSError) as err:
             _LOGGER.error(err)
             if self.ws_reconnect_handle is None:
                 # Do a connection retry every x minutes. Executing this handle
@@ -191,9 +191,6 @@ def async_setup(hass, config):
         hass.loop.create_task(_hmip.ws_connect())
     return True
 
-
-# todo: For inspiration:
-# Checkout hass.components.configurator as used by aioautomatic/automatic
 
 class HmipGenericDevice(Entity):
     """Representation of an HomeMaticIP device."""
