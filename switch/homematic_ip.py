@@ -18,8 +18,7 @@ from ..homematic_ip import HmipGenericDevice
 _LOGGER = logging.getLogger(__name__)
 
 
-@asyncio.coroutine
-def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     """Set up the device."""
     _LOGGER.info("Setting up HomeMaticIP switch")
     _devices = []

@@ -25,8 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 # ATTR_STATE_ILUMINATION = 'ilumination'
 
 
-@asyncio.coroutine
-def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     _LOGGER.info("Setting up HomeMaticIP binary sensor")
     OPEN = 'opening'
     if OPEN not in DEVICE_CLASSES:

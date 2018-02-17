@@ -35,7 +35,7 @@ ATTR_HMIP_LAST_UPDATE = 'last_update'
 ATTR_HMIP_LOW_BATTERY = 'low_battery'
 ATTR_HMIP_UNREACHABLE = 'not_reachable'
 
-RECONNECT_RETRY_DELAY = 1  # minutes
+RECONNECT_RETRY_DELAY = 5  # minutes
 
 COMPONTENTS = [
     'sensor',
@@ -89,13 +89,11 @@ class HmipConnector:
     def home(self):
         return self._home
 
-    @asyncio.coroutine
-    def connect(self):
-        yield from self._home.init(self._accesspoint)
-        yield from self._home.get_current_state()
+    async def connect(self):
+        await self._home.init(self._accesspoint)
+        await self._home.get_current_state()
 
-    @asyncio.coroutine
-    def ws_connect(self, now=None):
+    async def ws_connect(self, now=None):
         self._ws_close_requested = False
 
         if self.ws_reconnect_handle is not None:
@@ -103,7 +101,7 @@ class HmipConnector:
         try:
             # connect to the websocket server.
 
-            ws_loop_future = yield from self._home.enable_events()
+            ws_loop_future = await self._home.enable_events()
             _LOGGER.info("HMIP events enabled.")
         except (HmipConnectionError, OSError) as err:
             _LOGGER.error(err)
@@ -131,10 +129,10 @@ class HmipConnector:
         # Reconnection procedure might have taken a long(er) time.
         # Meanwhile a device state might have changed, which is now missed.
         # Doing an explicit update state call.
-        yield from self._home.get_current_state()
+        await self._home.get_current_state()
 
         try:
-            yield from ws_loop_future
+            await ws_loop_future
         except HmipConnectionError as err:
             _LOGGER.error(str(err))
 
@@ -146,8 +144,7 @@ class HmipConnector:
                          "Trying to reconnect.")
             self._hass.loop.create_task(self.ws_connect())
 
-    @asyncio.coroutine
-    def ws_close(self):
+    async def ws_close(self):
         """Close the websocket connection"""
         _LOGGER.info("Closing HMIP connection")
         self._ws_close_requested = True
@@ -157,12 +154,11 @@ class HmipConnector:
             self.ws_reconnect_handle()
             self.ws_reconnect_handle = None
         _LOGGER.debug("Disabling events.")
-        yield from self._home.disable_events()
+        await self._home.disable_events()
         _LOGGER.info("Closed HMIP connection")
 
 
-@asyncio.coroutine
-def async_setup(hass, config):
+async def async_setup(hass, config):
     """Setup the hmip platform."""
     from homematicip.base.base_connection import HmipConnectionError
 
@@ -174,7 +170,7 @@ def async_setup(hass, config):
         websession = async_get_clientsession(hass)
         _hmip = HmipConnector(_hub_config, hass.loop, websession, hass)
         try:
-            yield from _hmip.connect()
+            await _hmip.connect()
         except HmipConnectionError as err:
             # todo: create a retry here too.
             _LOGGER.error('Failed to connect to the HomeMatic cloud server.')
