@@ -1,13 +1,10 @@
 """Support for HomematicIP via Accesspoint."""
 
-import asyncio
 import logging
-
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 
-import homeassistant.helpers.config_validation as cv
 from datetime import timedelta
-
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.discovery import async_load_platform
@@ -94,6 +91,10 @@ class HmipConnector:
         await self._home.get_current_state()
 
     async def ws_connect(self, now=None):
+        # Doing an extra init call as it seems after a while reconnecting
+        # to the websocket does not work without doing this.
+        await self._home.init(self._accesspoint)
+
         self._ws_close_requested = False
 
         if self.ws_reconnect_handle is not None:
