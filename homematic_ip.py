@@ -47,6 +47,10 @@ SIGNAL_UPDATE = 'homematicip.update'
 
 # todo: if provided use CONF_HOME_NAME as the access point id.
 
+# todo: Add periodic update_state call to check whether access point is still there
+
+# todo: during connection retry status should be set to unavailable.
+
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.All(cv.ensure_list, [vol.Schema({
         vol.Optional(CONF_HOME_NAME): cv.string,
