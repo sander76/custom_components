@@ -1,15 +1,14 @@
 """Support for HomematicIP via Accesspoint."""
 
+import asyncio
 import logging
+
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
-from datetime import timedelta
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
-from homeassistant.helpers.event import async_track_time_interval
 from homematicip.base.base_connection import HmipConnectionError
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,8 +77,8 @@ class HmipConnector:
         self._home = AsyncHome(loop, websession)
         self._home.set_auth_token(self._authtoken)
         self._ws_close_requested = False
-        self.ws_reconnect_handle = None
-
+        self.retry_task = None
+        self.tries = 0
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self.ws_close())
 
     @property
@@ -90,74 +89,49 @@ class HmipConnector:
     def home(self):
         return self._home
 
+    async def init_connection(self):
+        await self._home.init(self._accesspoint)
+        await self._home.get_current_state()
+
+    async def _handle_connection(self):
+        await self._home.get_current_state()
+
+        hmip_events = await self._home.enable_events()
+        try:
+            await hmip_events
+        except HmipConnectionError:
+            # todo: add persistent notification here.
+            return
+
     async def connect(self):
-        await self._home.init(self._accesspoint)
-        await self._home.get_current_state()
+        self.tries = 0
+        while True:
+            try:
+                await self._handle_connection()
+            except Exception:  # pylint: disable=broad-except
+                # Safety net. This should never hit.
+                # Still adding it here to make sure we can always reconnect
+                _LOGGER.exception("Unexpected error")
+            if self._ws_close_requested:
+                break
 
-    async def ws_connect(self, now=None):
-        # Doing an extra init call as it seems after a while reconnecting
-        # to the websocket does not work without doing this.
-        await self._home.init(self._accesspoint)
+            self._ws_close_requested = False
 
-        self._ws_close_requested = False
+            self.tries += 1
 
-        if self.ws_reconnect_handle is not None:
-            _LOGGER.debug("Retrying websocket connection.")
-        try:
-            # connect to the websocket server.
-
-            ws_loop_future = await self._home.enable_events()
-            _LOGGER.info("HMIP events enabled.")
-        except (HmipConnectionError, OSError) as err:
-            _LOGGER.error(err)
-            if self.ws_reconnect_handle is None:
-                # Do a connection retry every x minutes. Executing this handle
-                # will cancel the task.
-                _LOGGER.info(
-                    "reconnecting in %s minutes", RECONNECT_RETRY_DELAY)
-                self.ws_reconnect_handle = async_track_time_interval(
-                    self._hass, self.ws_connect, timedelta(
-                        minutes=RECONNECT_RETRY_DELAY)
-                )
-            return
-        except Exception as err:
-            _LOGGER.error("undefined error: %s", err)
-            return
-
-        # Connection succeeded. Remove any remaining reconnect handlers
-        if self.ws_reconnect_handle is not None:
-            self.ws_reconnect_handle()  # removes the handle task.
-            self.ws_reconnect_handle = None
-
-        _LOGGER.info("HMIP websocket connected.")
-
-        # Reconnection procedure might have taken a long(er) time.
-        # Meanwhile a device state might have changed, which is now missed.
-        # Doing an explicit update state call.
-        await self._home.get_current_state()
-
-        try:
-            await ws_loop_future
-        except HmipConnectionError as err:
-            _LOGGER.error(str(err))
-
-        _LOGGER.info("Websocket closed.")
-
-        # If websocket close was not requested, attempt to reconnect.
-        if not self._ws_close_requested:
-            _LOGGER.info("Websocket connection closed unintentionally. "
-                         "Trying to reconnect.")
-            self._hass.loop.create_task(self.ws_connect())
+            try:
+                self.retry_task = self._hass.async_add_job(asyncio.sleep(
+                    2 ** min(9, self.tries), loop=self._hass.loop))
+            except asyncio.CancelledError:
+                break
 
     async def ws_close(self):
         """Close the websocket connection"""
         _LOGGER.info("Closing HMIP connection")
         self._ws_close_requested = True
-        if self.ws_reconnect_handle is not None:
-            _LOGGER.debug("Removing reconnection handler")
-            # remove the handler
-            self.ws_reconnect_handle()
-            self.ws_reconnect_handle = None
+
+        if self.retry_task is not None:
+            self.retry_task.cancel()
         _LOGGER.debug("Disabling events.")
         await self._home.disable_events()
         _LOGGER.info("Closed HMIP connection")
@@ -175,21 +149,23 @@ async def async_setup(hass, config):
         websession = async_get_clientsession(hass)
         _hmip = HmipConnector(_hub_config, hass.loop, websession, hass)
         try:
-            await _hmip.connect()
-        except HmipConnectionError as err:
+            await _hmip.init_connection()
+        except HmipConnectionError:
             # todo: create a retry here too.
             _LOGGER.error('Failed to connect to the HomeMatic cloud server.')
             return False
-        else:
-            hass.data[DOMAIN][_hmip.hmip_id] = _hmip.home
+        except Exception as err:
+            _LOGGER.error(err)
+            return False
+        hass.data[DOMAIN][_hmip.hmip_id] = _hmip.home
 
-            for component in COMPONTENTS:
-                hass.async_add_job(async_load_platform(
-                    hass, component, DOMAIN,
-                    {ATTR_HMIP_HOME_ID: _hmip.hmip_id},
-                    config))
+        for component in COMPONTENTS:
+            hass.async_add_job(async_load_platform(
+                hass, component, DOMAIN,
+                {ATTR_HMIP_HOME_ID: _hmip.hmip_id},
+                config))
 
-        hass.loop.create_task(_hmip.ws_connect())
+        hass.loop.create_task(_hmip.connect())
     return True
 
 
@@ -216,10 +192,6 @@ class HmipGenericDevice(Entity):
 
     def _unique_id(self):
         return '{}_{}'.format(self.__class__.__name__, self._device.id)
-
-    # @property
-    # def entity_id(self):
-    #     return self._entity_id
 
     @property
     def name(self):
