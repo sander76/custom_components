@@ -5,7 +5,6 @@ import logging
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity, async_generate_entity_id
@@ -58,6 +57,12 @@ CONFIG_SCHEMA = vol.Schema({
     })])
 }, extra=vol.ALLOW_EXTRA)
 
+EVENT_HMIP_ACCESSPOINT_STATE_CHANGED = 'hmip_state_changed'
+
+STATE_CONNECTING = 'connecting'
+STATE_CONNECTED = 'connected'
+STATE_DISCONNECTED = 'disconnected'
+
 
 class HmipConnector:
     """
@@ -79,7 +84,43 @@ class HmipConnector:
         self._ws_close_requested = False
         self.retry_task = None
         self.tries = 0
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self.ws_close())
+        self._home.on_update(self.update)
+        self._previous_connection_state = True
+        # hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self.ws_close())
+
+    def update(self, *args, **kwargs):
+        """Update the home device.
+
+        Triggered when the hmip HOME_CHANGED event has fired.
+        There are several occasions when this event might happen.
+        We are only interested in this event to check whether the home is
+        still connected."""
+        if not self._home.connected:
+            _LOGGER.error(
+                "HMIP access point has lost connection with the cloud")
+            self._previous_connection_state = False
+            self.set_all_to_unavailable()
+        else:
+            if not self._previous_connection_state:
+                # only update the state when connection state has gone from
+                # false to true
+                job = self._hass.async_add_job(self.get_state())
+                job.add_done_callback(self.get_state_finished)
+
+    async def get_state(self):
+        """Update hmip state and tell hass."""
+        await self._home.get_current_state()
+        self.update_all()
+
+    def get_state_finished(self, future):
+        try:
+            future.result()
+        except HmipConnectionError:
+            # Somehow connection could not recover. Will disconnect and
+            # so reconnect loop is taking over.
+            _LOGGER.error(
+                "updating state after himp access point reconnect failed.")
+            self._hass.async_add_job(self._home.disable_events())
 
     @property
     def hmip_id(self):
@@ -89,29 +130,61 @@ class HmipConnector:
     def home(self):
         return self._home
 
+    @property
+    def devices(self):
+        return self._home.devices
+
     async def init_connection(self):
+        """Initialize HMIP cloud connection"""
         await self._home.init(self._accesspoint)
         await self._home.get_current_state()
 
+    def set_all_to_unavailable(self):
+        """Set all devices to unavailable"""
+
+        for device in self._home.devices:
+            device.unreach = True
+        self.update_all()
+
+    def set_all_to_available(self):
+        """Sets all devices to available"""
+
+        for device in self._home.devices:
+            device.unreach = False
+        self.update_all()
+
+    def update_all(self):
+        """Signal all devices to update their state."""
+
+        for device in self._home.devices:
+            device.fire_update_event()
+
     async def _handle_connection(self):
         await self._home.get_current_state()
+        self.update_all()
 
         hmip_events = await self._home.enable_events()
-        try:
-            await hmip_events
-        except HmipConnectionError:
-            # todo: add persistent notification here.
-            return
+
+        await hmip_events
 
     async def connect(self):
         self.tries = 0
         while True:
             try:
                 await self._handle_connection()
+            except HmipConnectionError:
+                _LOGGER.error("HMIP cloud connection error")
+
+                # todo: add persistent notification here.
+
+                self.set_all_to_unavailable()
             except Exception:  # pylint: disable=broad-except
                 # Safety net. This should never hit.
                 # Still adding it here to make sure we can always reconnect
                 _LOGGER.exception("Unexpected error")
+
+                self.set_all_to_unavailable()
+
             if self._ws_close_requested:
                 break
 
@@ -122,14 +195,15 @@ class HmipConnector:
             try:
                 self.retry_task = self._hass.async_add_job(asyncio.sleep(
                     2 ** min(9, self.tries), loop=self._hass.loop))
+                await self.retry_task
             except asyncio.CancelledError:
                 break
 
     async def ws_close(self):
         """Close the websocket connection"""
+
         _LOGGER.info("Closing HMIP connection")
         self._ws_close_requested = True
-
         if self.retry_task is not None:
             self.retry_task.cancel()
         _LOGGER.debug("Disabling events.")
@@ -139,6 +213,7 @@ class HmipConnector:
 
 async def async_setup(hass, config):
     """Setup the hmip platform."""
+
     from homematicip.base.base_connection import HmipConnectionError
 
     _LOGGER.debug("Setting up hmip platform")
@@ -175,7 +250,6 @@ class HmipGenericDevice(Entity):
     def __init__(self, hass, home, device, entity_id_format):
         """Initialize the generic device."""
         self.hass = hass
-        # self._home = home
         self._device = device
 
         self._device_state_attributes = {
@@ -185,8 +259,18 @@ class HmipGenericDevice(Entity):
         self._device.on_update(self.push_update)
         self.entity_id = async_generate_entity_id(
             entity_id_format, self._unique_id(), hass=hass)
+        # self.hass.async_listen(EVENT_HMIP_ACCESSPOINT_STATE_CHANGED,
+        #                        self.change_state)
 
-    def push_update(self, js, **kwargs):
+    def change_state(self, event):
+        _LOGGER.debug("state changed {}".format(event))
+        if event.data.get(
+                ATTR_HMIP_HOME_ID) == self._device_state_attributes.get(
+            ATTR_HMIP_HOME_ID):
+            # todo: interpret the state change
+            pass
+
+    def push_update(self, *args, **kwargs):
         """Update the hmip device."""
         self.async_schedule_update_ha_state()
 
@@ -206,6 +290,7 @@ class HmipGenericDevice(Entity):
     @property
     def available(self):
         """Check for device availability."""
+
         return not self._device.unreach
 
     def _get_attribute(self, attribute, attribute_key) -> dict:
