@@ -26,17 +26,17 @@ CONF_BEFORE = "before"
 CONF_AFTER = "after"
 # CONF_SCENE_ID = "scene_id"
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_BEFORE): cv.time,
-                vol.Required(CONF_AFTER): cv.time,
-            }
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
+# CONFIG_SCHEMA = vol.Schema(
+#     {
+#         DOMAIN: vol.Schema(
+#             {
+#                 vol.Optional(CONF_BEFORE): cv.time,
+#                 vol.Optional(CONF_AFTER): cv.time,
+#             }
+#         )
+#     },
+#     extra=vol.ALLOW_EXTRA,
+# )
 
 
 async def activate_scene(
@@ -55,8 +55,10 @@ async def activate_scene(
         await activate()
 
 
-def set_time_at_date(local_now:datetime, time: time):
-    local_time = datetime.combine(local_now.date(), time, tzinfo=local_now.tzinfo)
+def set_time_at_date(local_now: datetime, time: time):
+    local_time = datetime.combine(
+        local_now.date(), time, tzinfo=local_now.tzinfo
+    )
     return local_time
 
 
@@ -105,8 +107,8 @@ async def flow(
 async def async_setup(hass, config):
     """Setup the component."""
 
-    before = config[DOMAIN].get(CONF_BEFORE)
-    after = config[DOMAIN].get(CONF_AFTER)
+    # before = config[DOMAIN].get(CONF_BEFORE)
+    # after = config[DOMAIN].get(CONF_AFTER)
 
     async def async_activate(call):
         LOGGER.debug("Service activated")
@@ -124,15 +126,15 @@ async def async_setup(hass, config):
                 local_now, dt_util.parse_time(call.data[CONF_BEFORE])
             )
         except KeyError:
-            _before = set_time_at_date(local_now, before)
-
+            LOGGER.error("%s not provided in service call.", CONF_BEFORE)
+            return
         try:
             _after = set_time_at_date(
                 local_now, dt_util.parse_time(call.data[CONF_AFTER])
             )
         except KeyError:
-            _after = set_time_at_date(local_now, after)
-
+            LOGGER.error("%s not provided in service call.".format(CONF_AFTER))
+            return
         LOGGER.debug("Before: %s, After %s", _before, _after)
 
         await flow(hass, local_now, _before, _after, entity_id)

@@ -9,11 +9,10 @@ from homeassistant.core import HomeAssistant, Config
 from homeassistant.helpers.sun import get_astral_event_next
 
 from homeassistant.util.unit_system import METRIC_SYSTEM
-
+from voluptuous import Schema
 
 from morning_scene import (
     async_setup,
-    CONFIG_SCHEMA,
     DOMAIN,
     CONF_BEFORE,
     CONF_AFTER,
@@ -49,8 +48,7 @@ def loop():
 
 @pytest.fixture
 def config_data():
-    config = {DOMAIN: {CONF_BEFORE: "8:00", CONF_AFTER: "7:00"}}
-    return CONFIG_SCHEMA(config)
+    return Schema({})
 
 
 @pytest.fixture
@@ -70,14 +68,6 @@ def do_fake_time(monkeypatch):
         return fake_now()
 
     return make_do
-
-
-def test_config(config_data):
-
-    conf = config_data[DOMAIN]
-
-    assert isinstance(conf.get(CONF_BEFORE), time)
-    assert isinstance(conf.get(CONF_AFTER), time)
 
 
 def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
