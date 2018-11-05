@@ -1,29 +1,24 @@
 import asyncio
-from datetime import timedelta, tzinfo
-from functools import partial
+from datetime import datetime, time
 from unittest.mock import Mock
-from typing import Optional
-import pytest
-import homeassistant.util.dt as dt_util
-from homeassistant.core import HomeAssistant, Config
-from homeassistant.helpers.sun import get_astral_event_next
 
-from homeassistant.util.unit_system import METRIC_SYSTEM
+import homeassistant.util.dt as dt_util
+import pytest
+# from .common import async_test_home_assistant
+from common import async_test_home_assistant
+from homeassistant.const import ATTR_ENTITY_ID
 from voluptuous import Schema
 
-from morning_scene import (
+from time_slot_solar_event import (
     async_setup,
     DOMAIN,
-    CONF_BEFORE,
-    CONF_AFTER,
+    ATTR_BEFORE,
+    ATTR_AFTER,
     flow,
-    activate_scene,
     set_time_at_date,
-    get_dawn,
+    get_solar_event,
+    ATTR_SOLAR_EVENT,
 )
-from datetime import datetime, time
-
-from tests.common import async_test_home_assistant
 
 
 @pytest.fixture
@@ -86,7 +81,7 @@ def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
     activate_service = hass.services.has_service(DOMAIN, "activate")
     assert activate_service is True
 
-    loop.run_until_complete(
+    val = loop.run_until_complete(
         hass.services.async_call(
             DOMAIN,
             "activate",
@@ -98,18 +93,24 @@ def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
     before = set_time_at_date(dt_util.now(), time(hour=21))
     after = set_time_at_date(dt_util.now(), time(hour=20))
 
-    loop.run_until_complete(
-        hass.services.async_call(
-            DOMAIN,
-            "activate",
-            service_data={
-                "after": "20:00",
-                "before": "21:00",
-                "entity_id": "abv",
-            },
+    try:
+        loop.run_until_complete(
+            hass.services.async_call(
+                DOMAIN,
+                "activate",
+                service_data={
+                    ATTR_AFTER: "20:00",
+                    ATTR_BEFORE: "21:00",
+                    ATTR_ENTITY_ID: "abv",
+                    ATTR_SOLAR_EVENT: "dawn",
+                },
+            )
         )
+    except Exception as err:
+        pass
+    mock_flow.assert_called_once_with(
+        hass, fake_now, before, after, "abv", "dawn"
     )
-    mock_flow.assert_called_once_with(hass, fake_now, before, after, "abv")
 
 
 @pytest.fixture
@@ -134,7 +135,7 @@ def test_flow_dawn_later_than_before(
     scene_id = "scene_a"
 
     loop.run_until_complete(
-        flow(hass, fake_local_now, before, after, scene_id)
+        flow(hass, fake_local_now, before, after, scene_id, "dawn")
     )
 
     fake_activate_scene.assert_called_once_with(hass, scene_id, before)
@@ -149,10 +150,10 @@ def test_flow_dawn_between_now_and_before(
     after = set_time_at_date(fake_local_now, time(hour=6))
     scene_id = "scene_a"
 
-    next_dawn = get_dawn(fake_local_now, hass)
+    next_dawn = get_solar_event("dawn", fake_local_now, hass)
 
     loop.run_until_complete(
-        flow(hass, fake_local_now, before, after, scene_id)
+        flow(hass, fake_local_now, before, after, scene_id, "dawn")
     )
 
     fake_activate_scene.assert_called_once_with(hass, scene_id, next_dawn)
@@ -168,7 +169,7 @@ def test_flow_dawn_earlier_than_now(
     scene_id = "scene_a"
 
     loop.run_until_complete(
-        flow(hass, fake_local_now, before, after, scene_id)
+        flow(hass, fake_local_now, before, after, scene_id, "dawn")
     )
 
     fake_activate_scene.assert_called_once_with(hass, scene_id)
