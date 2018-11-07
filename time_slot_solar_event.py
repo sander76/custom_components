@@ -6,7 +6,7 @@ trigger:
 
 """
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Optional
 
 import homeassistant.helpers.config_validation as cv
@@ -49,7 +49,9 @@ async def activate_scene(hass, entity_id, point_in_time: Optional[datetime] = No
 
 
 def set_time_at_date(local_now: datetime, time: time):
-    local_time = datetime.combine(local_now.date(), time, tzinfo=local_now.tzinfo)
+    tz = local_now.tzinfo
+    #local_time = datetime.combine(local_now.date(), time, tzinfo=local_now.tzinfo)
+    local_time = tz.localize(datetime.combine(local_now.date(),time))
     return local_time
 
 
