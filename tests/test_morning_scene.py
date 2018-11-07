@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import homeassistant.util.dt as dt_util
 import pytest
+
 # from .common import async_test_home_assistant
 from common import async_test_home_assistant
 from homeassistant.const import ATTR_ENTITY_ID
@@ -51,12 +52,7 @@ def do_fake_time(monkeypatch):
     def make_do(hour, minute, timezone=None):
         def fake_now():
             return datetime(
-                year=2018,
-                month=1,
-                day=1,
-                hour=hour,
-                minute=minute,
-                tzinfo=timezone,
+                year=2018, month=1, day=1, hour=hour, minute=minute, tzinfo=timezone
             )
 
         monkeypatch.setattr("homeassistant.util.dt.now", fake_now)
@@ -73,7 +69,7 @@ def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
     async def mockflow(*args, **kwargs):
         mock_flow(*args, **kwargs)
 
-    monkeypatch.setattr("morning_scene.flow", mockflow)
+    monkeypatch.setattr("time_slot_solar_event.flow", mockflow)
 
     val = loop.run_until_complete(async_setup(hass, config_data))
     assert val is True
@@ -83,9 +79,7 @@ def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
 
     val = loop.run_until_complete(
         hass.services.async_call(
-            DOMAIN,
-            "activate",
-            service_data={"after": "20:00", "before": "21:00"},
+            DOMAIN, "activate", service_data={"after": "20:00", "before": "21:00"}
         )
     )
     mock_flow.assert_not_called()
@@ -108,9 +102,7 @@ def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
         )
     except Exception as err:
         pass
-    mock_flow.assert_called_once_with(
-        hass, fake_now, before, after, "abv", "dawn"
-    )
+    mock_flow.assert_called_once_with(hass, fake_now, before, after, "abv", "dawn")
 
 
 @pytest.fixture
@@ -120,13 +112,11 @@ def fake_activate_scene(monkeypatch):
     async def _fake_activate_scene(*args, **kwargs):
         fake_scene(*args, **kwargs)
 
-    monkeypatch.setattr("morning_scene.activate_scene", _fake_activate_scene)
+    monkeypatch.setattr("time_slot_solar_event.activate_scene", _fake_activate_scene)
     return fake_scene
 
 
-def test_flow_dawn_later_than_before(
-    hass, do_fake_time, fake_activate_scene, loop
-):
+def test_flow_dawn_later_than_before(hass, do_fake_time, fake_activate_scene, loop):
     fake_local_now = do_fake_time(6, 5, hass.config.time_zone)
 
     before = set_time_at_date(fake_local_now, time(hour=7))
@@ -134,9 +124,7 @@ def test_flow_dawn_later_than_before(
 
     scene_id = "scene_a"
 
-    loop.run_until_complete(
-        flow(hass, fake_local_now, before, after, scene_id, "dawn")
-    )
+    loop.run_until_complete(flow(hass, fake_local_now, before, after, scene_id, "dawn"))
 
     fake_activate_scene.assert_called_once_with(hass, scene_id, before)
 
@@ -152,24 +140,18 @@ def test_flow_dawn_between_now_and_before(
 
     next_dawn = get_solar_event("dawn", fake_local_now, hass)
 
-    loop.run_until_complete(
-        flow(hass, fake_local_now, before, after, scene_id, "dawn")
-    )
+    loop.run_until_complete(flow(hass, fake_local_now, before, after, scene_id, "dawn"))
 
     fake_activate_scene.assert_called_once_with(hass, scene_id, next_dawn)
 
 
-def test_flow_dawn_earlier_than_now(
-    hass, do_fake_time, fake_activate_scene, loop
-):
+def test_flow_dawn_earlier_than_now(hass, do_fake_time, fake_activate_scene, loop):
     fake_local_now = do_fake_time(9, 5, hass.config.time_zone)
 
     before = set_time_at_date(fake_local_now, time(hour=10))
     after = set_time_at_date(fake_local_now, time(hour=9))
     scene_id = "scene_a"
 
-    loop.run_until_complete(
-        flow(hass, fake_local_now, before, after, scene_id, "dawn")
-    )
+    loop.run_until_complete(flow(hass, fake_local_now, before, after, scene_id, "dawn"))
 
     fake_activate_scene.assert_called_once_with(hass, scene_id)

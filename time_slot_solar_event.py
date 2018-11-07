@@ -13,9 +13,7 @@ import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 import voluptuous as vol
 from homeassistant.const import ATTR_ENTITY_ID
-from homeassistant.helpers.event import (
-    async_track_point_in_time,
-)
+from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.sun import get_astral_event_next
 from homeassistant.util.dt import UTC
 
@@ -38,14 +36,10 @@ SERVICE_SCHEMA = vol.Schema(
 )
 
 
-async def activate_scene(
-    hass, entity_id, point_in_time: Optional[datetime] = None
-):
+async def activate_scene(hass, entity_id, point_in_time: Optional[datetime] = None):
     async def activate():
         LOGGER.debug("Activating scene.")
-        hass.bus.async_fire(
-            "scene.turn_on", event_data={"entity_id": entity_id}
-        )
+        hass.bus.async_fire("scene.turn_on", event_data={"entity_id": entity_id})
 
     if point_in_time is not None:
         async_track_point_in_time(hass, activate, point_in_time)
@@ -55,9 +49,7 @@ async def activate_scene(
 
 
 def set_time_at_date(local_now: datetime, time: time):
-    local_time = datetime.combine(
-        local_now.date(), time, tzinfo=local_now.tzinfo
-    )
+    local_time = datetime.combine(local_now.date(), time, tzinfo=local_now.tzinfo)
     return local_time
 
 
@@ -71,9 +63,7 @@ def get_solar_event(solar_event, local_now, hass):
         current_day_utc, time(hour=0, minute=0), tzinfo=UTC
     )
     next_dawn = dt_util.as_local(
-        get_astral_event_next(
-            hass, solar_event, utc_point_in_time=start_of_day_utc
-        )
+        get_astral_event_next(hass, solar_event, utc_point_in_time=start_of_day_utc)
     )
     return next_dawn
 
@@ -89,12 +79,12 @@ async def flow(
     if after < now < before:
         LOGGER.info("Morning scenario")
 
-        next_solar_event = get_solar_event(solar_event,now, hass)
+        next_solar_event = get_solar_event(solar_event, now, hass)
 
-        LOGGER.debug("next %s: %s",solar_event, next_solar_event)
+        LOGGER.debug("next %s: %s", solar_event, next_solar_event)
 
         if now >= next_solar_event:
-            LOGGER.info("%s has passed. Activating scene.",solar_event)
+            LOGGER.info("%s has passed. Activating scene.", solar_event)
             # activate the up scene.
             await activate_scene(hass, scene_id)
 
@@ -103,7 +93,7 @@ async def flow(
             await activate_scene(hass, scene_id, before)
 
         else:
-            LOGGER.info("Scheduling scene activation at %s",solar_event)
+            LOGGER.info("Scheduling scene activation at %s", solar_event)
             # schedule the shade activation at dawn
             await activate_scene(hass, scene_id, next_solar_event)
     else:
@@ -117,20 +107,18 @@ async def async_setup(hass, config):
         LOGGER.debug("Service activated")
 
         entity_id = call.data[ATTR_ENTITY_ID]
-        solar_event=call.data[ATTR_SOLAR_EVENT]
+        solar_event = call.data[ATTR_SOLAR_EVENT]
         local_now = dt_util.now()
 
         _before = set_time_at_date(
             local_now, dt_util.parse_time(call.data[ATTR_BEFORE])
         )
 
-        _after = set_time_at_date(
-            local_now, dt_util.parse_time(call.data[ATTR_AFTER])
-        )
+        _after = set_time_at_date(local_now, dt_util.parse_time(call.data[ATTR_AFTER]))
 
         LOGGER.debug("Before: %s, After %s", _before, _after)
 
-        await flow(hass, local_now, _before, _after, entity_id,solar_event)
+        await flow(hass, local_now, _before, _after, entity_id, solar_event)
 
     hass.services.async_register(
         DOMAIN, "activate", async_activate, schema=SERVICE_SCHEMA
