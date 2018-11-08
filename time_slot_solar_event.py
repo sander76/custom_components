@@ -31,7 +31,7 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Required(ATTR_ENTITY_ID): cv.string,
         vol.Required(ATTR_BEFORE): cv.string,
         vol.Required(ATTR_AFTER): cv.string,
-        vol.Required(ATTR_SOLAR_EVENT): vol.In("dawn", "dusk"),
+        vol.Required(ATTR_SOLAR_EVENT): vol.In(("dawn", "dusk")),
     }
 )
 
@@ -97,7 +97,7 @@ async def flow(
             await activate_scene(hass, scene_id, before)
 
         else:
-            LOGGER.info("Scheduling scene activation at %s", solar_event)
+            LOGGER.info("Scheduling scene activation at dawn: %s", solar_event)
             # schedule the shade activation at dawn
             await activate_scene(hass, scene_id, next_solar_event)
     else:

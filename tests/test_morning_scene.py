@@ -20,7 +20,7 @@ from time_slot_solar_event import (
     set_time_at_date,
     get_solar_event,
     ATTR_SOLAR_EVENT,
-)
+    SERVICE_SCHEMA)
 
 
 @pytest.fixture
@@ -69,6 +69,12 @@ def do_fake_time(monkeypatch):
         return fake_now()
 
     return make_do
+
+def test_service_data():
+    #todo: how to properly test that something does NOT raise an exception ?
+    data = {"before":"8:00","after":"6:00","entity_id":"scene_a","solar_event":"dusk"}
+    SERVICE_SCHEMA(data)
+
 
 
 def test_async_setup(hass, monkeypatch, config_data, do_fake_time, loop):
