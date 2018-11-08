@@ -36,10 +36,14 @@ SERVICE_SCHEMA = vol.Schema(
 )
 
 
-async def activate_scene(hass, entity_id, point_in_time: Optional[datetime] = None):
+async def activate_scene(
+    hass, entity_id, point_in_time: Optional[datetime] = None
+):
     async def activate():
         LOGGER.debug("Activating scene.")
-        hass.bus.async_fire("scene.turn_on", event_data={"entity_id": entity_id})
+        hass.bus.async_fire(
+            "scene.turn_on", event_data={"entity_id": entity_id}
+        )
 
     if point_in_time is not None:
         async_track_point_in_time(hass, activate, point_in_time)
@@ -50,22 +54,20 @@ async def activate_scene(hass, entity_id, point_in_time: Optional[datetime] = No
 
 def set_time_at_date(local_now: datetime, time: time):
     tz = local_now.tzinfo
-    #local_time = datetime.combine(local_now.date(), time, tzinfo=local_now.tzinfo)
-    local_time = tz.localize(datetime.combine(local_now.date(),time))
+    local_time = tz.localize(datetime.combine(local_now.date(), time))
     return local_time
-
-
-# {"after":"20:00","before":"21:00","entity_id":"abv"}
 
 
 def get_solar_event(solar_event, local_now, hass):
     """Returns the next occurring solar event. Local time."""
-    current_day_utc = dt_util.as_utc(local_now).date()
-    start_of_day_utc = datetime.combine(
-        current_day_utc, time(hour=0, minute=0), tzinfo=UTC
+    start_of_day_utc = dt_util.as_utc(
+        datetime.combine(local_now.date(), time(hour=0, minute=0))
     )
+
     next_dawn = dt_util.as_local(
-        get_astral_event_next(hass, solar_event, utc_point_in_time=start_of_day_utc)
+        get_astral_event_next(
+            hass, solar_event, utc_point_in_time=start_of_day_utc
+        )
     )
     return next_dawn
 
@@ -116,7 +118,9 @@ async def async_setup(hass, config):
             local_now, dt_util.parse_time(call.data[ATTR_BEFORE])
         )
 
-        _after = set_time_at_date(local_now, dt_util.parse_time(call.data[ATTR_AFTER]))
+        _after = set_time_at_date(
+            local_now, dt_util.parse_time(call.data[ATTR_AFTER])
+        )
 
         LOGGER.debug("Before: %s, After %s", _before, _after)
 
