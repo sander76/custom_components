@@ -1,8 +1,9 @@
-"""A schedule component to activate a scene based on time and solar event:
+"""Time slot solar event
 
-An automation example:
 
-trigger:
+A component to activate a scene within a certain time slot and at a certain
+solar event.
+
 
 """
 import logging
@@ -15,10 +16,8 @@ import voluptuous as vol
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.sun import get_astral_event_next
-from homeassistant.util.dt import UTC
 
 LOGGER = logging.getLogger(__name__)
-
 
 DOMAIN = "time_slot_solar_event"
 
@@ -39,7 +38,7 @@ SERVICE_SCHEMA = vol.Schema(
 async def activate_scene(
     hass, entity_id, point_in_time: Optional[datetime] = None
 ):
-    async def activate():
+    async def activate(*args, **kwargs):
         LOGGER.debug("Activating scene.")
         hass.bus.async_fire(
             "scene.turn_on", event_data={"entity_id": entity_id}
@@ -47,7 +46,6 @@ async def activate_scene(
 
     if point_in_time is not None:
         async_track_point_in_time(hass, activate, point_in_time)
-
     else:
         await activate()
 
@@ -81,24 +79,22 @@ async def flow(
     solar_event: str,
 ):
     if after < now < before:
-        LOGGER.info("Morning scenario")
+        LOGGER.debug("Trigger is inside time slot")
 
         next_solar_event = get_solar_event(solar_event, now, hass)
 
-        LOGGER.debug("next %s: %s", solar_event, next_solar_event)
+        LOGGER.debug("Next %s: %s", solar_event, next_solar_event)
 
         if now >= next_solar_event:
             LOGGER.info("%s has passed. Activating scene.", solar_event)
-            # activate the up scene.
             await activate_scene(hass, scene_id)
 
         elif next_solar_event > before:
-            LOGGER.info("Scheduling scene activation at morning end.")
+            LOGGER.info("Scheduling scene activation at end of time slot.")
             await activate_scene(hass, scene_id, before)
 
         else:
-            LOGGER.info("Scheduling scene activation at dawn: %s", solar_event)
-            # schedule the shade activation at dawn
+            LOGGER.info("Scheduling scene activation at: %s", solar_event)
             await activate_scene(hass, scene_id, next_solar_event)
     else:
         LOGGER.debug("Current time outside morning time frame.")
