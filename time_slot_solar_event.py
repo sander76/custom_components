@@ -36,18 +36,25 @@ SERVICE_SCHEMA = vol.Schema(
 
 
 async def activate_scene(
-    hass, entity_id, point_in_time: Optional[datetime] = None
+    hass,
+    entity_id,
+    point_in_time: Optional[datetime] = None,
+    service="scene.turn_on",
 ):
-    async def activate(*args, **kwargs):
-        LOGGER.debug("Activating scene.")
-        hass.bus.async_fire(
-            "scene.turn_on", event_data={"entity_id": entity_id}
+    domain, service_name = service.split(".", 1)
+
+    async def call_service(*args, **kwargs):
+        LOGGER.info(
+            "Calling service: {}, entity_id: {}".format(service, entity_id)
+        )
+        await hass.services.async_call(
+            domain, service_name, service_data={ATTR_ENTITY_ID: entity_id}
         )
 
     if point_in_time is not None:
-        async_track_point_in_time(hass, activate, point_in_time)
+        async_track_point_in_time(hass, call_service, point_in_time)
     else:
-        await activate()
+        await call_service()
 
 
 def set_time_at_date(local_now: datetime, time: time):
