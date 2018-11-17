@@ -45,7 +45,9 @@ async def activate_scene(
 
     async def call_service(*args, **kwargs):
         LOGGER.info(
-            "Calling service: {}, entity_id: {}".format(service, entity_id)
+            "%s : Calling service: {}, entity_id: {}".format(
+                entity_id, service, entity_id
+            )
         )
         await hass.services.async_call(
             domain, service_name, service_data={ATTR_ENTITY_ID: entity_id}
@@ -86,22 +88,29 @@ async def flow(
     solar_event: str,
 ):
     if after < now < before:
-        LOGGER.debug("Trigger is inside time slot")
+        LOGGER.debug("%s : Trigger is inside time slot.", scene_id)
 
         next_solar_event = get_solar_event(solar_event, now, hass)
 
-        LOGGER.debug("Next %s: %s", solar_event, next_solar_event)
-
         if now >= next_solar_event:
-            LOGGER.info("%s has passed. Activating scene.", solar_event)
+            LOGGER.info(
+                "%s : %s has passed. Activating scene.", scene_id, solar_event
+            )
             await activate_scene(hass, scene_id)
 
         elif next_solar_event > before:
-            LOGGER.info("Scheduling scene activation at end of time slot.")
+            LOGGER.info(
+                "%s : Scheduling at end of time slot: %s", scene_id, before
+            )
             await activate_scene(hass, scene_id, before)
 
         else:
-            LOGGER.info("Scheduling scene activation at: %s", solar_event)
+            LOGGER.info(
+                "%s : Scheduling at: %s, %s",
+                scene_id,
+                solar_event,
+                next_solar_event,
+            )
             await activate_scene(hass, scene_id, next_solar_event)
     else:
         LOGGER.debug("Current time outside morning time frame.")
@@ -125,7 +134,7 @@ async def async_setup(hass, config):
             local_now, dt_util.parse_time(call.data[ATTR_AFTER])
         )
 
-        LOGGER.debug("Before: %s, After %s", _before, _after)
+        # LOGGER.debug("Before: %s, After %s", _before, _after)
 
         await flow(hass, local_now, _before, _after, entity_id, solar_event)
 
