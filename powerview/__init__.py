@@ -67,10 +67,11 @@ async def async_setup(hass, config):
         hass.data[DOMAIN] = {"shades": shades}
 
         for component in POWERVIEW_COMPONENTS:
-            await discovery.async_load_platform(
-                hass, component, DOMAIN, {}, config
-            )
+            await discovery.async_load_platform(hass, component, DOMAIN, {}, config)
+
     await scan_for_shades()
+
+
 
     hass.services.async_register(DOMAIN, "scan", scan_for_shades)
 

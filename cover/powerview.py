@@ -94,9 +94,7 @@ class PowerViewDevice(CoverDevice):
     @property
     def unique_id(self):
         """Return a unique ID."""
-        return "{}_{}".format(
-            self.__class__.__name__, self.shade_instance.id
-        )
+        return "{}_{}".format(self.__class__.__name__, self.shade_instance.id)
 
     @property
     def is_closed(self):
